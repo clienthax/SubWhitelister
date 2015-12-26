@@ -1,83 +1,47 @@
 package net.bitjump.bukkit.subwhitelister.util;
 
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.util.HashMap;
+import com.google.common.reflect.TypeToken;
+import ninja.leaping.configurate.ConfigurationOptions;
+import ninja.leaping.configurate.commented.CommentedConfigurationNode;
+import ninja.leaping.configurate.loader.ConfigurationLoader;
 
-import org.bukkit.configuration.file.FileConfiguration;
-import org.bukkit.configuration.file.YamlConfiguration;
-import org.bukkit.plugin.java.JavaPlugin;
+import java.util.Collections;
+import java.util.List;
 
 public class ConfigManager
 {
-	private static JavaPlugin p;
-	private static final HashMap<String, FileConfiguration> configs = new HashMap<String, FileConfiguration>();
-	
-	public static void setup(JavaPlugin p)
-	{
-		ConfigManager.p = p;
-	}
-	
-	public FileConfiguration getConfig(String s)
-	{
-		return configs.get(s);
-	}
-	
-	public static FileConfiguration setupConfig()
-	{
-		return setupConfig("config.yml");
-	}
-	
-	public static FileConfiguration setupConfig(String s)
-	{
-		File f = new File(p.getDataFolder(), s);
 
-		if (!f.exists())
-		{
-			f.getParentFile().mkdirs();
-			copy(p.getResource(s), f);
-		}
-		
-		FileConfiguration config = YamlConfiguration.loadConfiguration(f);
-		
-		configs.put(s, config);
-		return config;
-	}		
-	
-	private static void copy(InputStream in, File file) 
-	{
-		try 
-		{
-			OutputStream out = new FileOutputStream(file);
-			byte[] buf = new byte[1024];
-			int len;
-        
-			while((len=in.read(buf))>0)
-			{
-				out.write(buf,0,len);
-			}
-			
-			out.close();
-			in.close();
-		} 
-		catch (Exception e) 
-		{
+	CommentedConfigurationNode rootNode;
+	boolean enabled = true;
+	int delay = 60;
+	List<String> urls = Collections.singletonList("replace_me");
+
+	public ConfigManager(ConfigurationLoader<CommentedConfigurationNode> configurationLoader) {
+		try {
+			rootNode = configurationLoader.load(ConfigurationOptions.defaults().setShouldCopyDefaults(true));
+			enabled = rootNode.getNode("enabled").getBoolean(enabled);
+			delay = rootNode.getNode("whitelist").getNode("delay").setComment("The delay, in seconds, between the updating of the remote whitelist.").getInt(delay);
+			urls = rootNode.getNode("whitelist").getNode("urls").setComment("The unique IDs of the whitelists to pull from.").getList(new TypeToken<String>() {}, urls);
+			configurationLoader.save(rootNode);
+		} catch (Exception e) {
 			e.printStackTrace();
 		}
 	}
-	
-	public static void saveConfig(String s)
-	{
-		try 
-		{
-			configs.get(s).save(s);
-		}
-		catch (IOException e) 
-		{
-			e.printStackTrace();
-		}
+
+	public void setEnabled(boolean enabled) {
+		this.enabled = enabled;
 	}
+
+	public boolean isEnabled() {
+		return enabled;
+	}
+
+	public int getDelay() {
+		return delay;
+	}
+
+	public List<String> getUrls() {
+		return urls;
+	}
+
 }

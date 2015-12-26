@@ -1,70 +1,82 @@
 package net.bitjump.bukkit.subwhitelister;
 
-import java.util.logging.Logger;
-
-import net.bitjump.bukkit.subwhitelister.commands.*;
+import com.google.inject.Inject;
+import net.bitjump.bukkit.subwhitelister.commands.ListCommandExecutor;
+import net.bitjump.bukkit.subwhitelister.commands.ReloadCommandExecutor;
+import net.bitjump.bukkit.subwhitelister.commands.ToggleCommandExecutor;
 import net.bitjump.bukkit.subwhitelister.listeners.PlayerListener;
 import net.bitjump.bukkit.subwhitelister.util.ConfigManager;
 import net.bitjump.bukkit.subwhitelister.util.WhitelistManager;
+import ninja.leaping.configurate.commented.CommentedConfigurationNode;
+import ninja.leaping.configurate.loader.ConfigurationLoader;
+import org.slf4j.Logger;
+import org.spongepowered.api.Sponge;
+import org.spongepowered.api.command.spec.CommandSpec;
+import org.spongepowered.api.config.DefaultConfig;
+import org.spongepowered.api.event.Listener;
+import org.spongepowered.api.event.game.state.GameInitializationEvent;
+import org.spongepowered.api.plugin.Plugin;
 
-import org.bukkit.configuration.file.FileConfiguration;
-import org.bukkit.plugin.PluginDescriptionFile;
-import org.bukkit.plugin.java.JavaPlugin;
-
-public class SubWhitelister extends JavaPlugin
+@Plugin(name = "SubWhitelister", id = "subwhitelister", version = "1.0")
+public class SubWhitelister
 {
-	public static JavaPlugin instance;
-	
-	private static Logger log;
+	public static SubWhitelister instance;
 
-	public static FileConfiguration config;
-	public static PluginDescriptionFile pdf;
+	@Inject
+	public Logger log;
 
-	public static String name;
-	public static String version;
-	public static String author;
-	
-	public static CommandManager cm;
-	
-	public void onEnable()
+	@Inject
+	@DefaultConfig(sharedRoot = false)
+	private ConfigurationLoader<CommentedConfigurationNode> configurationLoader;
+
+	ConfigManager configManager;
+
+	@Listener
+	public void onEnable(GameInitializationEvent event)
 	{
-		log = getLogger();
-		
-		log.info("Plugin initializing...");
-		
-		pdf = getDescription();
 
-		name = pdf.getName();
-		version = pdf.getVersion();
-		author = pdf.getAuthors().get(0);
-		
-		ConfigManager.setup(this);
-		config = ConfigManager.setupConfig();
+		log.info("Plugin initializing...");
+
+		configManager = new ConfigManager(configurationLoader);
 		
 		log.info("Setting up commands...");
-		cm = new CommandManager(this);
-		cm.setCommandPrefix("sw");
-		cm.registerCommand(new ListCommand());
-		cm.registerCommand(new ReloadCommand());
-		cm.registerCommand(new ToggleCommand());
-		cm.registerCommand(new ExportCommand());
-		
+
+		CommandSpec listCommand = CommandSpec.builder()
+				.permission("subwhitelister.commands.list")
+				.executor(new ListCommandExecutor())
+				.build();
+
+		CommandSpec reloadCommand = CommandSpec.builder()
+				.permission("subwhitelister.commands.reload")
+				.executor(new ReloadCommandExecutor())
+				.build();
+
+		CommandSpec toggleCommand = CommandSpec.builder()
+				.permission("subwhitelister.commands.toggle")
+				.executor(new ToggleCommandExecutor())
+				.build();
+
+		CommandSpec swCommandSpec = CommandSpec.builder()
+				.child(listCommand, "list")
+				.child(reloadCommand, "reload")
+				.child(toggleCommand, "toggle")
+				.build();
+		Sponge.getGame().getCommandManager().register(this, swCommandSpec, "sw");
 		
 		log.info("Setting up listeners...");
-		getServer().getPluginManager().registerEvents(new PlayerListener(), this);
+		Sponge.getEventManager().registerListeners(this, new PlayerListener());
 		
 		instance = this;
 		
 		WhitelistManager.initialize();
 	}
-	
-	public void onDisable()
-	{
-		
+
+	public ConfigManager getConfigManager() {
+		return configManager;
 	}
 
 	public static Logger getLog()
 	{
-		return log;
+		return instance.log;
 	}
 }

@@ -1,15 +1,13 @@
 package net.bitjump.bukkit.subwhitelister.util;
 
+import net.bitjump.bukkit.subwhitelister.SubWhitelister;
+import org.spongepowered.api.Sponge;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.URL;
-import java.net.UnknownHostException;
 import java.util.HashSet;
-
-import org.bukkit.Bukkit;
-
-import net.bitjump.bukkit.subwhitelister.SubWhitelister;
 
 public class WhitelistManager 
 {
@@ -17,13 +15,7 @@ public class WhitelistManager
 	
 	public static void initialize()
 	{
-		Bukkit.getScheduler().runTaskTimerAsynchronously(SubWhitelister.instance, new Runnable()
-		{
-			public void run()
-			{
-				updateRemoteWhitelists();
-			}
-		}, 0l, SubWhitelister.config.getInt("whitelist.delay") * 20l);
+		Sponge.getGame().getScheduler().createTaskBuilder().async().execute(WhitelistManager::updateRemoteWhitelists).intervalTicks(SubWhitelister.instance.getConfigManager().getDelay() * 20L).submit(SubWhitelister.instance);
 	}
 	
 	public static HashSet<String> getUsers()
@@ -33,7 +25,7 @@ public class WhitelistManager
 	
 	public static void updateRemoteWhitelists()
 	{
-		for(String s : SubWhitelister.config.getStringList("whitelist.urls"))
+		for(String s : SubWhitelister.instance.getConfigManager().getUrls())
 		{
 			BufferedReader in = null;
 			try 
@@ -48,8 +40,8 @@ public class WhitelistManager
 			}
 			catch (IOException e)
 			{
-				SubWhitelister.getLog().severe("[SubWhitelister] Uh oh. The website could be down. We'll keep trying.");
-				SubWhitelister.getLog().severe("[SubWhitelister] Give the following crash log to @Bitjump_ for diagnostics!");
+				SubWhitelister.getLog().error("[SubWhitelister] Uh oh. The website could be down. We'll keep trying.");
+				SubWhitelister.getLog().error("[SubWhitelister] Give the following crash log to @Bitjump_ for diagnostics!");
 				e.printStackTrace();
 			}
 			finally
